@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaura la Señal</title>
+<style>
+  :root{
+    --bg: #0a0e16;
+    --panel: #121a29;
+    --panel-edge: #1c2740;
+    --ink: #eaf1fb;
+    --muted: #8a97b3;
+    --red: #ff5a4e;
+    --green: #2fe6a4;
+    --blue: #4aa8ff;
+    --violet: #c46bff;
+    --amber: #ffb84a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 10%, rgba(196,107,255,.14), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(74,168,255,.14), transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(47,230,164,.10), transparent 50%),
+      var(--bg);
+    color:var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height:100vh;
+    padding: 28px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* ---- Header ---- */
+  .broadcast{
+    border:1px solid rgba(255,90,78,.5);
+    background: linear-gradient(180deg, rgba(255,90,78,.08), rgba(255,90,78,.02));
+    border-radius:10px;
+    padding:18px 20px;
+    margin-bottom:28px;
+  }
+  .broadcast .tag{
+    display:inline-block;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--red);
+    font-weight:700;
+    border:1px solid rgba(255,90,78,.5);
+    padding:3px 8px;
+    border-radius:4px;
+    margin-bottom:12px;
+  }
+  h1{
+    font-family: "Arial Narrow", Arial, sans-serif;
+    font-weight:800;
+    letter-spacing:.01em;
+    font-size:clamp(28px,6vw,40px);
+    margin:0 0 10px;
+    line-height:1.05;
+  }
+  .story{color:var(--muted); font-size:15.5px; line-height:1.55; margin:0;}
+  .story b{color:var(--ink);}
+
+  /* ---- Progress rail ---- */
+  .rail{
+    display:flex; gap:8px; margin: 26px 0 30px;
+  }
+  .rail-step{
+    flex:1; height:6px; border-radius:99px; background:var(--panel-edge);
+    overflow:hidden;
+  }
+  .rail-step .fill{height:100%; width:0%; background:var(--green); transition:width .5s ease;}
+
+  /* ---- Panels ---- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:20px;
+    position:relative;
+    transition: opacity .4s ease, filter .4s ease;
+  }
+  .panel.locked{
+    opacity:.4;
+    filter: grayscale(.6);
+    pointer-events:none;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:6px;
+  }
+  .lock-badge{
+    width:34px; height:34px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; flex-shrink:0;
+    border:1px solid var(--panel-edge);
+    background:#0d1420;
+  }
+  .panel.solved .lock-badge{ background: rgba(47,230,164,.15); border-color:var(--green); }
+  .panel-title{
+    font-family:"Arial Narrow", Arial, sans-serif;
+    font-weight:800; font-size:20px; letter-spacing:.01em; margin:0;
+  }
+  .panel-sub{ color:var(--muted); font-size:13.5px; margin: 2px 0 0; }
+  .panel-body{margin-top:16px;}
+
+  /* ---- Lock 1: timeline ---- */
+  .card-pool{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px;}
+  .card{
+    background:#0d1420; border:1px solid var(--panel-edge); border-radius:10px;
+    padding:12px 14px; cursor:pointer; font-size:14px; line-height:1.4;
+    transition: transform .15s ease, border-color .15s ease;
+    user-select:none;
+  }
+  .card:hover{border-color:var(--blue);}
+  .card.used{opacity:.25; pointer-events:none;}
+  .card.wrong{animation: shake .35s ease;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-6px);}
+    75%{transform:translateX(6px);}
+  }
+  .track{
+    display:flex; gap:10px; flex-wrap:wrap; min-height:56px;
+    border:1px dashed var(--panel-edge); border-radius:10px; padding:10px;
+    margin-bottom:14px;
+  }
+  .slot{
+    flex:1; min-width:130px; min-height:44px;
+    border-radius:8px; display:flex; align-items:center; justify-content:center;
+    font-size:13px; text-align:center; padding:6px;
+    background:#0a0e16; color:var(--muted); border:1px solid transparent;
+  }
+  .slot.filled{ color:var(--ink); border-color:var(--blue); background:rgba(74,168,255,.08); }
+
+  /* ---- Lock 2 & 3: matching ---- */
+  .match-cols{display:flex; gap:14px; flex-wrap:wrap;}
+  .match-col{flex:1; min-width:220px; display:flex; flex-direction:column; gap:10px;}
+  .pill{
+    background:#0d1420; border:1px solid var(--panel-edge); border-radius:10px;
+    padding:12px 14px; cursor:pointer; font-size:14px; line-height:1.4;
+  }
+  .pill.actor{ font-weight:700; }
+  .pill.selected{ border-color:var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
+  .pill.correct{ border-color:var(--green); background:rgba(47,230,164,.10); pointer-events:none; }
+  .pill.wrong{ animation: shake .35s ease; border-color:var(--red); }
+  .pill.matched-source{ opacity:.35; pointer-events:none; }
+
+  /* ---- Buttons ---- */
+  .btn{
+    display:inline-block; background:var(--blue); color:#04101f; font-weight:700;
+    border:none; border-radius:8px; padding:11px 18px; font-size:14px;
+    cursor:pointer; margin-top:8px;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn.ghost{ background:transparent; border:1px solid var(--panel-edge); color:var(--ink); }
+  .hint{color:var(--muted); font-size:13px; margin-top:10px;}
+  .feedback{font-size:13.5px; margin-top:10px; min-height:18px;}
+  .feedback.ok{color:var(--green);}
+  .feedback.bad{color:var(--red);}
+
+  /* ---- Final ---- */
+  #final{
+    text-align:center; padding:34px 20px;
+  }
+  #final .glow{
+    font-size:44px; margin-bottom:6px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ transform:scale(1); opacity:1;}
+    50%{ transform:scale(1.08); opacity:.85;}
+  }
+  textarea{
+    width:100%; min-height:80px; background:#0d1420; border:1px solid var(--panel-edge);
+    border-radius:10px; color:var(--ink); padding:12px; font-size:14px; font-family:inherit;
+    resize:vertical; margin-top:12px;
+  }
+  #reactivated{display:none; margin-top:18px;}
+  #reactivated .msg{
+    font-family:"Arial Narrow", Arial, sans-serif; font-weight:800;
+    font-size:26px; color:var(--green); letter-spacing:.02em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="broadcast">
+    <h1>Actividad</h1>
+    <p class="hint" style="margin-top:10px;">
+      El equipo que lo resuelva en el menor tiempo gana. Recuerden usar lo dicho en la exposición
+      y lo que ustedes recuerden de ella.
+    </p>
+  </div>
+
+  <div class="rail">
+    <div class="rail-step"><div class="fill" id="fill1"></div></div>
+    <div class="rail-step"><div class="fill" id="fill2"></div></div>
+    <div class="rail-step"><div class="fill" id="fill3"></div></div>
+  </div>
+
+  <!-- PANEL 1 -->
+  <div class="panel" id="panel1">
+    <div class="panel-head">
+      <div class="lock-badge" id="badge1">🔒</div>
+      <div>
+        <p class="panel-title">Panel 1 · El cable cruzado del tiempo</p>
+        <p class="panel-sub">Ordenen los hechos en la línea de tiempo del espectro, del más antiguo al más reciente.</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="card-pool" id="pool1"></div>
+      <div class="track" id="track1"></div>
+      <button class="btn" id="check1">Verificar orden</button>
+      <div class="feedback" id="fb1"></div>
+    </div>
+  </div>
+
+  <!-- PANEL 2 -->
+  <div class="panel locked" id="panel2">
+    <div class="panel-head">
+      <div class="lock-badge" id="badge2">🔒</div>
+      <div>
+        <p class="panel-title">Panel 2 · La torre de control</p>
+        <p class="panel-sub">Toquen un actor y luego la función que le corresponde.</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="match-cols">
+        <div class="match-col" id="actors2"></div>
+        <div class="match-col" id="funcs2"></div>
+      </div>
+      <div class="feedback" id="fb2"></div>
+    </div>
+  </div>
+
+  <!-- PANEL 3 -->
+  <div class="panel locked" id="panel3">
+    <div class="panel-head">
+      <div class="lock-badge" id="badge3">🔒</div>
+      <div>
+        <p class="panel-title">Panel 3 · Un carril, muchos carros</p>
+        <p class="panel-sub">Toquen un uso del espectro y luego la forma en que se entrega ese permiso.</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="match-cols">
+        <div class="match-col" id="uses3"></div>
+        <div class="match-col" id="mechs3"></div>
+      </div>
+      <div class="feedback" id="fb3"></div>
+    </div>
+  </div>
+
+  <!-- FINAL -->
+  <div class="panel locked" id="panelFinal">
+    <div id="final">
+      <div class="glow">📡</div>
+      <p class="panel-title" style="text-align:center;">Reactivación de la señal</p>
+      <p class="hint" style="margin-top:10px;">
+        De los retos mencionados en la exposición (interferencia, uso ineficiente y demanda creciente),
+        ¿cuál crees que tiene más relevancia hoy o debería resolverse primero? Dime tu opinión personal.
+      </p>
+      <textarea id="reflection" placeholder="Escribe aquí tu opinión..."></textarea>
+      <br>
+      <button class="btn" id="reactivateBtn">Reactivar señal</button>
+      <div id="reactivated">
+        <div class="msg">✅ SEÑAL RESTABLECIDA</div>
+        <p class="hint">La ciudad está de vuelta en línea. Buen trabajo, equipo.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------------- PANEL 1: timeline ---------------- */
+const timelineData = [
+  {id:'a', label:'Maxwell', text:'Maxwell publica las ecuaciones que predicen las ondas electromagnéticas'},
+  {id:'b', label:'Hertz', text:'Hertz las comprueba en laboratorio: nace el hercio (Hz)'},
+  {id:'c', label:'Marconi', text:'Marconi convierte el hallazgo en tecnología: la radio'},
+  {id:'d', label:'HJN (Colombia)', text:'Llega a Colombia: nace la HJN, primera emisora del país'}
+];
+const correctOrder1 = ['a','b','c','d'];
+let chosen1 = [];
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function renderPool1(){
+  const pool = document.getElementById('pool1');
+  pool.innerHTML = '';
+  shuffle(timelineData).forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.textContent = item.label;
+    el.dataset.id = item.id;
+    el.addEventListener('click', ()=>{
+      if(el.classList.contains('used')) return;
+      if(chosen1.length >= 4) return;
+      el.classList.add('used');
+      chosen1.push(item.id);
+      renderTrack1();
+    });
+    pool.appendChild(el);
+  });
+}
+
+function renderTrack1(){
+  const track = document.getElementById('track1');
+  track.innerHTML = '';
+  for(let i=0;i<4;i++){
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (chosen1[i] ? ' filled' : '');
+    if(chosen1[i]){
+      const item = timelineData.find(t=>t.id===chosen1[i]);
+      slot.textContent = item.label;
+    } else {
+      slot.textContent = (i+1) + '°';
+    }
+    track.appendChild(slot);
+  }
+}
+
+document.getElementById('check1').addEventListener('click', ()=>{
+  const fb = document.getElementById('fb1');
+  if(chosen1.length < 4){
+    fb.textContent = 'Elijan las 4 tarjetas antes de verificar.';
+    fb.className = 'feedback bad';
+    return;
+  }
+  const ok = chosen1.every((id,i)=> id === correctOrder1[i]);
+  if(ok){
+    fb.textContent = '¡Orden correcto! Panel 1 desbloqueado.';
+    fb.className = 'feedback ok';
+    solvePanel(1);
+  } else {
+    fb.textContent = 'Ese orden no es correcto. Inténtenlo de nuevo.';
+    fb.className = 'feedback bad';
+    document.querySelectorAll('#track1 .slot').forEach(s=>s.classList.add('wrong'));
+    setTimeout(()=>{
+      chosen1 = [];
+      renderPool1();
+      renderTrack1();
+      document.querySelectorAll('#track1 .slot').forEach(s=>s.classList.remove('wrong'));
+    }, 550);
+  }
+});
+
+/* ---------------- Generic matching engine (used by panel 2 & 3) ---------------- */
+function buildMatch({ leftItems, rightItems, leftMount, rightMount, onComplete, feedbackId }){
+  let selectedLeft = null;
+  let solvedCount = 0;
+  const total = leftItems.length;
+  const fb = document.getElementById(feedbackId);
+
+  const leftEls = {};
+  const rightEls = {};
+
+  const leftShuffled = shuffle(leftItems);
+  const rightShuffled = shuffle(rightItems);
+
+  leftShuffled.forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'pill actor';
+    el.textContent = item.label;
+    el.addEventListener('click', ()=>{
+      if(el.classList.contains('matched-source')) return;
+      document.querySelectorAll('.pill.selected').forEach(p=>p.classList.remove('selected'));
+      selectedLeft = item.id;
+      el.classList.add('selected');
+    });
+    leftEls[item.id] = el;
+    leftMount.appendChild(el);
+  });
+
+  rightShuffled.forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'pill';
+    el.textContent = item.label;
+    el.addEventListener('click', ()=>{
+      if(!selectedLeft) {
+        fb.textContent = 'Primero toquen un elemento de la izquierda.';
+        fb.className = 'feedback bad';
+        return;
+      }
+      if(selectedLeft === item.matchId){
+        el.classList.add('correct');
+        leftEls[selectedLeft].classList.add('correct','matched-source');
+        leftEls[selectedLeft].classList.remove('selected');
+        solvedCount++;
+        selectedLeft = null;
+        fb.textContent = solvedCount === total ? '¡Todas las parejas correctas!' : 'Correcto, sigan así.';
+        fb.className = 'feedback ok';
+        if(solvedCount === total) onComplete();
+      } else {
+        el.classList.add('wrong');
+        leftEls[selectedLeft].classList.add('wrong');
+        fb.textContent = 'Esa pareja no es correcta. Intenten otra vez.';
+        fb.className = 'feedback bad';
+        setTimeout(()=>{
+          el.classList.remove('wrong');
+          leftEls[selectedLeft] && leftEls[selectedLeft].classList.remove('wrong','selected');
+          selectedLeft = null;
+        }, 500);
+      }
+    });
+    rightEls[item.matchId] = rightEls[item.matchId] || [];
+    rightMount.appendChild(el);
+  });
+}
+
+/* ---------------- PANEL 2: actors ---------------- */
+const actors2 = [
+  {id:'mintic', label:'MinTIC'},
+  {id:'ane', label:'ANE'},
+  {id:'uit', label:'UIT'}
+];
+const funcs2 = [
+  {id:'f1', matchId:'mintic', label:'Define qué frecuencias se abren, cuándo se subastan y las condiciones de uso.'},
+  {id:'f2', matchId:'ane', label:'Hace la planeación técnica y vigila que nadie interfiera con nadie.'},
+  {id:'f3', matchId:'uit', label:'Coordina el uso global para que un país no interfiera con otro y organiza los tratados.'}
+];
+
+/* ---------------- PANEL 3: uses & mechanisms ---------------- */
+const uses3 = [
+  {id:'wifi', label:'Wifi y bluetooth'},
+  {id:'movil', label:'Redes móviles 4G/5G (banda 3500 MHz)'},
+  {id:'emerg', label:'Radioaficionados, defensa y emergencias'}
+];
+const mechs3 = [
+  {id:'m1', matchId:'wifi', label:'Uso libre compartido: cualquiera transmite sin permiso individual, cumpliendo reglas técnicas.'},
+  {id:'m2', matchId:'movil', label:'Subasta: compiten varios interesados y gana la mejor oferta económica y técnica.'},
+  {id:'m3', matchId:'emerg', label:'Permiso directo: el Estado reserva o autoriza la frecuencia bajo condiciones específicas.'}
+];
+
+/* ---------------- Panel unlock flow ---------------- */
+function solvePanel(n){
+  document.getElementById('badge'+n).textContent = '✅';
+  document.getElementById('panel'+n).classList.add('solved');
+  document.getElementById('fill'+n).style.width = '100%';
+
+  if(n === 1){
+    unlockPanel(2);
+    buildMatch({
+      leftItems: actors2,
+      rightItems: funcs2,
+      leftMount: document.getElementById('actors2'),
+      rightMount: document.getElementById('funcs2'),
+      feedbackId: 'fb2',
+      onComplete: ()=> solvePanel(2)
+    });
+  } else if(n === 2){
+    unlockPanel(3);
+    buildMatch({
+      leftItems: uses3,
+      rightItems: mechs3,
+      leftMount: document.getElementById('uses3'),
+      rightMount: document.getElementById('mechs3'),
+      feedbackId: 'fb3',
+      onComplete: ()=> solvePanel(3)
+    });
+  } else if(n === 3){
+    unlockPanel('Final');
+  }
+}
+
+function unlockPanel(n){
+  const p = document.getElementById('panel'+n);
+  p.classList.remove('locked');
+  p.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+document.getElementById('reactivateBtn').addEventListener('click', ()=>{
+  document.getElementById('reactivated').style.display = 'block';
+  document.getElementById('reactivateBtn').style.display = 'none';
+});
+
+renderPool1();
+renderTrack1();
+</script>
+</body>
+</html>
